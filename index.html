@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>7CYCLE Routine Tracker</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+
+      body {
+        margin: 0;
+        padding: 2rem;
+        font-family: Arial, Helvetica, sans-serif;
+        background: #fff;
+        color: #000;
+      }
+
+      .app {
+        max-width: 960px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        margin-top: 0;
+        letter-spacing: 0.08em;
+      }
+
+      .summary {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+      }
+
+      .chart {
+        width: 160px;
+        height: 160px;
+        border-radius: 50%;
+        border: 2px solid #000;
+        background: conic-gradient(#000 var(--fill, 0%), #fff 0%);
+      }
+
+      .chart-label {
+        font-weight: bold;
+      }
+
+      .controls {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+      }
+
+      input,
+      button {
+        font: inherit;
+        border: 1px solid #000;
+        background: #fff;
+        color: #000;
+        padding: 0.5rem;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        border: 1px solid #000;
+        padding: 0.5rem;
+        text-align: center;
+      }
+
+      th:first-child,
+      td:first-child {
+        text-align: left;
+        min-width: 170px;
+      }
+
+      .empty {
+        margin-top: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <h1>7CYCLE</h1>
+      <section class="summary">
+        <div id="progress-chart" class="chart" style="--fill: 0%"></div>
+        <div>
+          <div class="chart-label">Routine Progress</div>
+          <div id="progress-text">0%</div>
+        </div>
+      </section>
+
+      <section>
+        <div class="controls">
+          <input id="activity-input" type="text" placeholder="Add activity" aria-label="Add activity" />
+          <button id="add-activity" type="button">Add</button>
+        </div>
+
+        <table aria-label="Routine tracker table">
+          <thead>
+            <tr>
+              <th>Activity</th>
+              <th>Mon</th>
+              <th>Tue</th>
+              <th>Wed</th>
+              <th>Thu</th>
+              <th>Fri</th>
+              <th>Sat</th>
+              <th>Sun</th>
+            </tr>
+          </thead>
+          <tbody id="tracker-body"></tbody>
+        </table>
+
+        <p id="empty-state" class="empty">No activities yet. Add one to start your routine.</p>
+      </section>
+    </main>
+
+    <script>
+      const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+      const body = document.getElementById("tracker-body");
+      const emptyState = document.getElementById("empty-state");
+      const chart = document.getElementById("progress-chart");
+      const progressText = document.getElementById("progress-text");
+      const activityInput = document.getElementById("activity-input");
+      const addButton = document.getElementById("add-activity");
+
+      function updateProgress() {
+        const checkboxes = body.querySelectorAll('input[type="checkbox"]');
+        const completed = body.querySelectorAll('input[type="checkbox"]:checked').length;
+        const total = checkboxes.length;
+        const progress = total === 0 ? 0 : Math.round((completed / total) * 100);
+
+        chart.style.setProperty("--fill", `${progress}%`);
+        progressText.textContent = `${progress}% (${completed}/${total})`;
+      }
+
+      function updateEmptyState() {
+        emptyState.style.display = body.children.length === 0 ? "block" : "none";
+      }
+
+      function addActivity(name) {
+        const row = document.createElement("tr");
+
+        const nameCell = document.createElement("td");
+        nameCell.textContent = name;
+        row.appendChild(nameCell);
+
+        days.forEach(() => {
+          const cell = document.createElement("td");
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.addEventListener("change", updateProgress);
+          cell.appendChild(checkbox);
+          row.appendChild(cell);
+        });
+
+        body.appendChild(row);
+        updateEmptyState();
+        updateProgress();
+      }
+
+      addButton.addEventListener("click", () => {
+        const name = activityInput.value.trim();
+        if (!name) {
+          return;
+        }
+
+        addActivity(name);
+        activityInput.value = "";
+        activityInput.focus();
+      });
+
+      activityInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          addButton.click();
+        }
+      });
+
+      updateProgress();
+      updateEmptyState();
+    </script>
+  </body>
+</html>

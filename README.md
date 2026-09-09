@@ -1,2 +1,9 @@
 # 7CYCLE
-A routine tracker app that you fill out to track various tasks that you set. This is meant to motivate you and help you maintain a routine.
+
+A minimal routine tracker app with:
+- A black-and-white pie chart that fills as routine tasks are completed
+- A weekly table (Mon-Sun columns)
+- User-defined activity rows
+
+## Usage
+Open `/home/runner/work/7CYCLE/7CYCLE/index.html` in a browser.
