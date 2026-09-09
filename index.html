@@ -18,7 +18,7 @@
       }
 
       .app {
-        max-width: 960px;
+        max-width: 1200px;
         margin: 0 auto;
       }
 
@@ -27,32 +27,46 @@
         letter-spacing: 0.08em;
       }
 
-      .summary {
+      .layout {
         display: flex;
+        align-items: flex-start;
+        gap: 2rem;
+      }
+
+      .summary {
+        width: 320px;
+        display: flex;
+        flex-direction: column;
         align-items: center;
         gap: 1rem;
-        margin-bottom: 2rem;
       }
 
       .chart {
-        width: 160px;
-        height: 160px;
+        width: 260px;
+        height: 260px;
         border-radius: 50%;
-        border: 2px solid #000;
+        border: 3px solid #000;
         background: conic-gradient(#000 var(--fill, 0%), #fff 0%);
       }
 
       .chart-label {
         font-weight: bold;
+        text-align: center;
+      }
+
+      .tracker {
+        flex: 1;
       }
 
       .controls {
         display: flex;
-        gap: 0.5rem;
+        flex-wrap: wrap;
+        gap: 0.6rem;
         margin-bottom: 1rem;
       }
 
       input,
+      select,
       button {
         font: inherit;
         border: 1px solid #000;
@@ -63,6 +77,10 @@
 
       button {
         cursor: pointer;
+      }
+
+      #activity-select {
+        min-width: 280px;
       }
 
       table {
@@ -86,44 +104,122 @@
       .empty {
         margin-top: 1rem;
       }
+
+      .weeks-badge {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        border: 2px solid #000;
+        background: #fff;
+        padding: 0.45rem 0.8rem;
+        font-weight: bold;
+        opacity: 0.85;
+      }
+
+      .weeks-badge.active {
+        animation: badge-pop 0.5s ease-out;
+      }
+
+      .cycle-overlay {
+        position: fixed;
+        inset: 0;
+        display: none;
+        pointer-events: none;
+      }
+
+      .cycle-overlay.active {
+        display: block;
+      }
+
+      .overlay-chart {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        width: 280px;
+        height: 280px;
+        transform: translate(-50%, -50%) scale(1);
+      }
+
+      .cycle-overlay.shrinking .overlay-chart {
+        animation: shrink-to-corner 1s ease-in forwards;
+      }
+
+      @keyframes shrink-to-corner {
+        to {
+          top: 1rem;
+          left: calc(100% - 5.4rem);
+          transform: translate(0, 0) scale(0.33);
+          opacity: 0;
+        }
+      }
+
+      @keyframes badge-pop {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.13);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      @media (max-width: 900px) {
+        .layout {
+          flex-direction: column;
+        }
+
+        .summary {
+          width: 100%;
+        }
+      }
     </style>
   </head>
   <body>
     <main class="app">
       <h1>7CYCLE</h1>
-      <section class="summary">
-        <div id="progress-chart" class="chart" style="--fill: 0%"></div>
-        <div>
-          <div class="chart-label">Routine Progress</div>
-          <div id="progress-text">0%</div>
-        </div>
-      </section>
+      <section class="layout">
+        <section class="summary">
+          <div id="progress-chart" class="chart" style="--fill: 0%"></div>
+          <div>
+            <div class="chart-label">Routine Progress</div>
+            <div id="progress-text">0%</div>
+          </div>
+        </section>
 
-      <section>
-        <div class="controls">
-          <input id="activity-input" type="text" placeholder="Add activity" aria-label="Add activity" />
-          <button id="add-activity" type="button">Add</button>
-        </div>
+        <section class="tracker">
+          <div class="controls">
+            <select id="activity-select" aria-label="Choose preset activity"></select>
+            <button id="add-selected-activity" type="button">Add Selected Activity</button>
+            <input id="activity-input" type="text" placeholder="Add your own activity" aria-label="Add activity" />
+            <button id="add-activity" type="button">Add Custom</button>
+          </div>
 
-        <table aria-label="Routine tracker table">
-          <thead>
-            <tr>
-              <th>Activity</th>
-              <th>Mon</th>
-              <th>Tue</th>
-              <th>Wed</th>
-              <th>Thu</th>
-              <th>Fri</th>
-              <th>Sat</th>
-              <th>Sun</th>
-            </tr>
-          </thead>
-          <tbody id="tracker-body"></tbody>
-        </table>
+          <table aria-label="Routine tracker table">
+            <thead>
+              <tr>
+                <th>Activity</th>
+                <th>Mon</th>
+                <th>Tue</th>
+                <th>Wed</th>
+                <th>Thu</th>
+                <th>Fri</th>
+                <th>Sat</th>
+                <th>Sun</th>
+              </tr>
+            </thead>
+            <tbody id="tracker-body"></tbody>
+          </table>
 
-        <p id="empty-state" class="empty">No activities yet. Add one to start your routine.</p>
+          <p id="empty-state" class="empty">No activities yet. Add one to start your routine.</p>
+        </section>
       </section>
     </main>
+    <div id="weeks-consistent" class="weeks-badge">0 weeks consistent</div>
+    <div id="cycle-overlay" class="cycle-overlay" aria-hidden="true">
+      <div id="cycle-overlay-chart" class="chart overlay-chart" style="--fill: 0%"></div>
+    </div>
 
     <script>
       const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -131,17 +227,106 @@
       const emptyState = document.getElementById("empty-state");
       const chart = document.getElementById("progress-chart");
       const progressText = document.getElementById("progress-text");
+      const activitySelect = document.getElementById("activity-select");
       const activityInput = document.getElementById("activity-input");
       const addButton = document.getElementById("add-activity");
+      const addSelectedButton = document.getElementById("add-selected-activity");
+      const weeksBadge = document.getElementById("weeks-consistent");
+      const cycleOverlay = document.getElementById("cycle-overlay");
+      const overlayChart = document.getElementById("cycle-overlay-chart");
+      const weeksStorageKey = "7cycle-weeks-consistent";
+      const activityPrefixes = ["Morning", "Evening", "Focused", "Quick", "Deep", "Power", "Outdoor", "Indoor", "Recovery", "Creative"];
+      const activityTypes = [
+        "Walk",
+        "Run",
+        "Yoga",
+        "Stretch",
+        "Meditation",
+        "Journal",
+        "Reading",
+        "Cycling",
+        "Strength Training",
+        "Meal Prep",
+        "Hydration Check",
+        "Language Practice"
+      ];
+      const presetActivities = activityPrefixes.flatMap((prefix) => activityTypes.map((type) => `${prefix} ${type}`));
+
+      let wasComplete = false;
+      let completionAnimationRunning = false;
+      let weeksConsistent = Number.parseInt(localStorage.getItem(weeksStorageKey) || "0", 10);
+
+      function getWeeksLabel() {
+        return `${weeksConsistent} week${weeksConsistent === 1 ? "" : "s"} consistent`;
+      }
+
+      function renderWeeks() {
+        weeksBadge.textContent = getWeeksLabel();
+      }
+
+      function populatePresetActivities() {
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = `Choose preset activity (${presetActivities.length} options)`;
+        activitySelect.appendChild(placeholder);
+
+        presetActivities.forEach((activity) => {
+          const option = document.createElement("option");
+          option.value = activity;
+          option.textContent = activity;
+          activitySelect.appendChild(option);
+        });
+      }
+
+      function triggerCycleCompleteAnimation() {
+        completionAnimationRunning = true;
+        cycleOverlay.classList.add("active");
+        cycleOverlay.classList.remove("shrinking");
+        cycleOverlay.setAttribute("aria-hidden", "false");
+        overlayChart.style.setProperty("--fill", "0%");
+
+        const duration = 1300;
+        const start = performance.now();
+        function fillOverlay(now) {
+          const fillProgress = Math.min((now - start) / duration, 1);
+          overlayChart.style.setProperty("--fill", `${Math.round(fillProgress * 100)}%`);
+          if (fillProgress < 1) {
+            requestAnimationFrame(fillOverlay);
+            return;
+          }
+
+          cycleOverlay.classList.add("shrinking");
+          weeksConsistent += 1;
+          localStorage.setItem(weeksStorageKey, String(weeksConsistent));
+          renderWeeks();
+          weeksBadge.classList.remove("active");
+          void weeksBadge.offsetWidth;
+          weeksBadge.classList.add("active");
+
+          setTimeout(() => {
+            cycleOverlay.classList.remove("active", "shrinking");
+            cycleOverlay.setAttribute("aria-hidden", "true");
+            completionAnimationRunning = false;
+          }, 1050);
+        }
+
+        requestAnimationFrame(fillOverlay);
+      }
 
       function updateProgress() {
         const checkboxes = body.querySelectorAll('input[type="checkbox"]');
         const completed = body.querySelectorAll('input[type="checkbox"]:checked').length;
         const total = checkboxes.length;
         const progress = total === 0 ? 0 : Math.round((completed / total) * 100);
+        const isComplete = total > 0 && completed === total;
 
         chart.style.setProperty("--fill", `${progress}%`);
         progressText.textContent = `${progress}% (${completed}/${total})`;
+
+        if (isComplete && !wasComplete && !completionAnimationRunning) {
+          triggerCycleCompleteAnimation();
+        }
+        wasComplete = isComplete;
       }
 
       function updateEmptyState() {
@@ -149,6 +334,14 @@
       }
 
       function addActivity(name) {
+        if (
+          [...body.querySelectorAll("tr td:first-child")].some(
+            (cell) => cell.textContent.toLowerCase() === name.toLowerCase()
+          )
+        ) {
+          return;
+        }
+
         const row = document.createElement("tr");
 
         const nameCell = document.createElement("td");
@@ -180,12 +373,23 @@
         activityInput.focus();
       });
 
+      addSelectedButton.addEventListener("click", () => {
+        const selectedName = activitySelect.value.trim();
+        if (!selectedName) {
+          return;
+        }
+
+        addActivity(selectedName);
+      });
+
       activityInput.addEventListener("keydown", (event) => {
         if (event.key === "Enter") {
           addButton.click();
         }
       });
 
+      populatePresetActivities();
+      renderWeeks();
       updateProgress();
       updateEmptyState();
     </script>
